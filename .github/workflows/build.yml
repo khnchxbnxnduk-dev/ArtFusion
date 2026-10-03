@@ -1,3 +1,4 @@
+
 name: Build BDraw APK
 
 on:
@@ -33,12 +34,67 @@ jobs:
         run: |
           rm -rf BDraw_V5
           unzip -q BDraw_V5_Android_Project.zip
-          
+
           test -f BDraw_V5/app/build.gradle
 
-          sed -i 's/JavaVersion.VERSION_11/JavaVersion.VERSION_17/g' BDraw_V5/app/build.gradle
-          sed -i 's/jvmTarget = "11"/jvmTarget = "17"/g' BDraw_V5/app/build.gradle
-          sed -i "s/jvmTarget = '11'/jvmTarget = '17'/g" BDraw_V5/app/build.gradle
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path("BDraw_V5/app/build.gradle")
+          s = p.read_text()
+
+          # แก้ Java 1.8 / 11 ให้เป็น Java 17
+          replacements = {
+              "JavaVersion.VERSION_1_8": "JavaVersion.VERSION_17",
+              "JavaVersion.VERSION_11": "JavaVersion.VERSION_17",
+              "JavaVersion.VERSION_8": "JavaVersion.VERSION_17",
+              "sourceCompatibility = 1.8": "sourceCompatibility = JavaVersion.VERSION_17",
+              "targetCompatibility = 1.8": "targetCompatibility = JavaVersion.VERSION_17",
+              "sourceCompatibility = '1.8'": "sourceCompatibility = JavaVersion.VERSION_17",
+              "targetCompatibility = '1.8'": "targetCompatibility = JavaVersion.VERSION_17",
+              'sourceCompatibility = "1.8"': "sourceCompatibility = JavaVersion.VERSION_17",
+              'targetCompatibility = "1.8"': "targetCompatibility = JavaVersion.VERSION_17",
+              "jvmTarget = '1.8'": "jvmTarget = '17'",
+              'jvmTarget = "1.8"': 'jvmTarget = "17"',
+              "jvmTarget = '11'": "jvmTarget = '17'",
+              'jvmTarget = "11"': 'jvmTarget = "17"',
+          }
+
+          for old, new in replacements.items():
+              s = s.replace(old, new)
+
+          # บังคับ Java 17 ให้ Android module
+          if "compileOptions" not in s:
+              s = s.replace(
+                  "android {",
+                  """android {
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+          """,
+                  1
+              )
+
+          # บังคับ Kotlin JVM 17
+          if "kotlinOptions" not in s:
+              s += """
+
+          kotlinOptions {
+              jvmTarget = "17"
+          }
+          """
+          else:
+              s = s.replace('jvmTarget = "1.8"', 'jvmTarget = "17"')
+              s = s.replace("jvmTarget = '1.8'", "jvmTarget = '17'")
+              s = s.replace('jvmTarget = "11"', 'jvmTarget = "17"')
+              s = s.replace("jvmTarget = '11'", "jvmTarget = '17'")
+
+          p.write_text(s)
+          PY
+
+          echo "===== app/build.gradle ====="
+          cat BDraw_V5/app/build.gradle
 
       - name: Build BDraw debug APK
         working-directory: BDraw_V5
