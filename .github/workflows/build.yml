@@ -33,14 +33,17 @@ jobs:
         run: |
           rm -rf BDraw_V5
           unzip -q BDraw_V5_Android_Project.zip
+          
           test -f BDraw_V5/app/build.gradle
+
+          sed -i 's/JavaVersion.VERSION_11/JavaVersion.VERSION_17/g' BDraw_V5/app/build.gradle
           sed -i 's/jvmTarget = "11"/jvmTarget = "17"/g' BDraw_V5/app/build.gradle
-          sed -i 's/sourceCompatibility = JavaVersion.VERSION_11/sourceCompatibility = JavaVersion.VERSION_17/g' BDraw_V5/app/build.gradle
-          sed -i 's/targetCompatibility = JavaVersion.VERSION_11/targetCompatibility = JavaVersion.VERSION_17/g' BDraw_V5/app/build.gradle
+          sed -i "s/jvmTarget = '11'/jvmTarget = '17'/g" BDraw_V5/app/build.gradle
 
       - name: Build BDraw debug APK
         working-directory: BDraw_V5
-        run: gradle assembleDebug --no-daemon
+        run: |
+          gradle assembleDebug --no-daemon
 
       - name: Upload BDraw APK
         uses: actions/upload-artifact@v4
