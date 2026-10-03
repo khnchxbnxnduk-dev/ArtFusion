@@ -1,109 +1,33 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
 
-name: Build BDraw APK
+android {
+    namespace 'com.artfusion.v1'
+    compileSdk 35
 
-on:
-  workflow_dispatch:
-  push:
-    branches: ["main"]
+    defaultConfig {
+        applicationId 'com.artfusion.v1'
+        minSdk 26
+        targetSdk 35
+        versionCode 1
+        versionName '1.0'
+    }
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
 
-      - name: Setup Java 17
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "17"
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v4
-        with:
-          packages: "platform-tools platforms;android-35 build-tools;35.0.0"
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v6
-        with:
-          gradle-version: "8.9"
-
-      - name: Extract BDraw project
-        run: |
-          rm -rf BDraw_V5
-          unzip -q BDraw_V5_Android_Project.zip
-
-          test -f BDraw_V5/app/build.gradle
-
-          python3 - <<'PY'
-          from pathlib import Path
-
-          p = Path("BDraw_V5/app/build.gradle")
-          s = p.read_text()
-
-          # แก้ Java 1.8 / 11 ให้เป็น Java 17
-          replacements = {
-              "JavaVersion.VERSION_1_8": "JavaVersion.VERSION_17",
-              "JavaVersion.VERSION_11": "JavaVersion.VERSION_17",
-              "JavaVersion.VERSION_8": "JavaVersion.VERSION_17",
-              "sourceCompatibility = 1.8": "sourceCompatibility = JavaVersion.VERSION_17",
-              "targetCompatibility = 1.8": "targetCompatibility = JavaVersion.VERSION_17",
-              "sourceCompatibility = '1.8'": "sourceCompatibility = JavaVersion.VERSION_17",
-              "targetCompatibility = '1.8'": "targetCompatibility = JavaVersion.VERSION_17",
-              'sourceCompatibility = "1.8"': "sourceCompatibility = JavaVersion.VERSION_17",
-              'targetCompatibility = "1.8"': "targetCompatibility = JavaVersion.VERSION_17",
-              "jvmTarget = '1.8'": "jvmTarget = '17'",
-              'jvmTarget = "1.8"': 'jvmTarget = "17"',
-              "jvmTarget = '11'": "jvmTarget = '17'",
-              'jvmTarget = "11"': 'jvmTarget = "17"',
-          }
-
-          for old, new in replacements.items():
-              s = s.replace(old, new)
-
-          # บังคับ Java 17 ให้ Android module
-          if "compileOptions" not in s:
-              s = s.replace(
-                  "android {",
-                  """android {
-              compileOptions {
-                  sourceCompatibility JavaVersion.VERSION_17
-                  targetCompatibility JavaVersion.VERSION_17
-              }
-          """,
-                  1
-              )
-
-          # บังคับ Kotlin JVM 17
-          if "kotlinOptions" not in s:
-              s += """
-
-          kotlinOptions {
-              jvmTarget = "17"
-          }
-          """
-          else:
-              s = s.replace('jvmTarget = "1.8"', 'jvmTarget = "17"')
-              s = s.replace("jvmTarget = '1.8'", "jvmTarget = '17'")
-              s = s.replace('jvmTarget = "11"', 'jvmTarget = "17"')
-              s = s.replace("jvmTarget = '11'", "jvmTarget = '17'")
-
-          p.write_text(s)
-          PY
-
-          echo "===== app/build.gradle ====="
-          cat BDraw_V5/app/build.gradle
-
-      - name: Build BDraw debug APK
-        working-directory: BDraw_V5
-        run: |
-          gradle assembleDebug --no-daemon
-
-      - name: Upload BDraw APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: BDraw-debug-APK
-          path: BDraw_V5/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+}
